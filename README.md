@@ -218,4 +218,4 @@ personal use. Power estimates are not a substitute for a calibrated power meter.
 
 ## License
 
-[MIT](LICENSE) © 2026 lucacava
+[MIT](LICENSE) © 2026 Luca Cavallini
