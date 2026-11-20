@@ -1,0 +1,12 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Runtime data (ride logs and local settings)
+sessions/
+settings.json
+.last_device
+
+# macOS
+.DS_Store

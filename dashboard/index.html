@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merach Live</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10); --wash: rgba(11,11,11,0.05);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+  --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
+  --hl: #ffe9a8;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.06);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; --s8: #e66767;
+    --hl: #5a4510;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.06);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s7: #9085e9; --s8: #e66767;
+  --hl: #5a4510;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font: 14px/1.4 var(--sans); }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 14px 16px 6px; }
+h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+h2 { font-size: 13px; margin: 0 0 10px; font-weight: 600; color: var(--ink-2); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); font-size: 13px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.pill.good .dot { background: var(--good); }
+.pill.warn .dot { background: var(--warn); animation: pulse 1.2s infinite; }
+.pill.crit .dot { background: var(--crit); }
+@keyframes pulse { 50% { opacity: .35; } }
+.msg { color: var(--muted); font-size: 12px; padding: 0 16px 8px; min-height: 18px; }
+.spacer { flex: 1; }
+.sel { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px 8px; }
+.replay-banner { background: var(--wash); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+  color: var(--ink-2); font-size: 12px; margin: 0 16px 8px; }
+.meta { color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+main { padding: 0 16px 32px; display: grid; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; min-width: 0; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.tile .lab { display: flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 12px; }
+.sw { width: 10px; height: 3px; border-radius: 2px; flex: none; }
+.tile .val { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-top: 2px; }
+.tile .val small { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-left: 3px; letter-spacing: 0; }
+.tile .sub { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; color: var(--ink-2); padding: 6px 11px; font: inherit; font-size: 13px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--wash); color: var(--ink); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface);
+  color: var(--ink-2); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.chip[aria-pressed="true"] { color: var(--ink); background: var(--wash); }
+.chip[aria-pressed="false"] .sw { opacity: .3; }
+form.knob { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+form.knob label { color: var(--ink-2); font-size: 13px; }
+input { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; }
+input[type=number] { width: 84px; }
+input.note { width: 170px; }
+button.primary { font: inherit; font-size: 13px; border-radius: 8px; padding: 6px 12px; cursor: pointer;
+  border: 1px solid var(--ink); background: var(--ink); color: var(--surface); }
+.hint { color: var(--muted); font-size: 12px; flex-basis: 100%; }
+#charts { display: grid; gap: 10px; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 10px 4px; }
+.ph { display: flex; align-items: baseline; gap: 8px; padding: 0 4px 2px; }
+.ph .pt { font-weight: 600; font-size: 13px; }
+.ph .pv { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13px; }
+.panel canvas { display: block; width: 100%; height: 150px; touch-action: pan-y; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.rawc { border-top: 1px solid var(--border); padding: 8px 0; }
+.rawc:first-child { border-top: 0; padding-top: 0; }
+.rawh { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--ink-2); }
+.rawh b { color: var(--ink); font-family: var(--mono); font-weight: 600; }
+.hex { font-family: var(--mono); font-size: 13px; margin-top: 4px; word-break: break-all; line-height: 1.7; }
+.hex .b { padding: 1px 2px; border-radius: 3px; }
+.hex .b.ch { background: var(--hl); }
+.dec { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 2px; word-break: break-word; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--ink-2); font-weight: 600; font-size: 12px; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.mono, span.mono { font-family: var(--mono); font-size: 12px; }
+details { border-top: 1px solid var(--border); padding: 6px 0; }
+details:first-of-type { border-top: 0; }
+summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.empty { color: var(--muted); font-size: 13px; margin: 0; }
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 170px; }
+.tip .tt { color: var(--ink-2); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.tip .row { display: flex; align-items: center; gap: 6px; }
+.tip .row span:last-child { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+.markers { font-size: 12px; color: var(--ink-2); margin-top: 6px; }
+.hero .tile:first-child { grid-column: span 2; }
+.hero .tile:first-child .val { font-size: 46px; }
+@media (max-width: 420px) { .hero .tile:first-child { grid-column: span 1; } }
+.stats { display: flex; flex-wrap: wrap; gap: 10px 26px; }
+.stat .k { color: var(--ink-2); font-size: 12px; }
+.stat .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .v small { font-size: 12px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+.lowknob { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lowknob .lab { color: var(--ink-2); font-size: 13px; }
+details.fold { border-top: 1px solid var(--border); padding: 14px; }
+details.fold > summary { font-size: 14px; color: var(--ink-2); }
+details.fold[open] > summary { margin-bottom: 10px; }
+details.chipmore { display: contents; }
+details.chipmore > summary { list-style: none; }
+details.chipmore > summary::-webkit-details-marker { display: none; }
+.tag { display: inline-block; font-size: 11px; font-weight: 500; color: var(--ink-2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0 7px; margin-left: 6px; vertical-align: 1px; }
+.tile.bike .val { font-size: 22px; color: var(--ink-2); }
+.sensor-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+.sensor-head h2 { margin: 0; }
+.sensor-head h2 b { color: var(--ink); }
+.sensor-opts { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; font-size: 13px; color: var(--ink-2); margin-bottom: 10px; }
+.sensor-opts input[type=number] { width: 70px; margin: 0 4px; }
+.howto { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+.howto p { font-size: 13px; color: var(--ink-2); margin: 6px 0; }
+button.primary.off { background: var(--surface); color: var(--ink); }
+.lgd { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 0 4px 4px; font-size: 12px; color: var(--ink-2); }
+.lgd > span { display: inline-flex; align-items: center; gap: 6px; }
+.lgd .cal { color: var(--muted); margin-left: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Merach Live</h1>
+  <span id="pill" class="pill crit"><span class="dot"></span><span id="pillText">Server unreachable</span></span>
+  <span id="pill3" class="pill" hidden title="Virtual trainer"><span class="dot"></span><span id="pill3Text"></span></span>
+  <span id="pill2" class="pill" hidden><span class="dot"></span><span id="pill2Text"></span></span>
+  <select id="sess" class="sel" aria-label="Session to display"><option value="">Live</option></select>
+  <span class="spacer"></span>
+  <span class="meta" id="meta"></span>
+</header>
+<div class="msg" id="msg"></div>
+<div class="replay-banner" id="replayBanner" hidden></div>
+<main>
+  <section class="tiles hero" id="tiles" aria-label="Current values (calibrated)"></section>
+
+  <section class="card summary" aria-label="Session summary">
+    <h2>Summary <span id="sumScope"></span></h2>
+    <div class="stats" id="summary"><p class="empty">Waiting for data…</p></div>
+  </section>
+
+  <section class="card" id="sensorCard" aria-label="Virtual trainer Better_Merach">
+    <div class="sensor-head">
+      <h2>Virtual trainer <b>Better_Merach</b></h2>
+      <span id="bcPill" class="pill"><span class="dot"></span><span id="bcText">—</span></span>
+      <span class="spacer"></span>
+      <button id="bcToggle" class="primary" type="button">—</button>
+    </div>
+    <div class="sensor-opts">
+      <label>Broadcast from
+        <select id="bcOutput" class="sel">
+          <option value="esp32">ESP32 board (full trainer)</option>
+          <option value="mac">Mac</option>
+          <option value="both">ESP32 and Mac</option>
+        </select></label>
+      <label id="bcProfileWrap">Mac profile
+        <select id="bcProfile" class="sel">
+          <option value="ftms">smart trainer (all data in one sensor)</option>
+          <option value="cps_csc">power + speed/cadence (two sensors)</option>
+          <option value="all">all profiles</option>
+          <option value="csc">pairing step 1: speed/cadence only</option>
+          <option value="cps">pairing step 2: power only</option>
+        </select></label>
+      <label><input type="checkbox" id="bcSpeed"> Virtual speed and distance</label>
+      <label>Rider + bike weight <input type="number" id="bcMass" min="30" max="250" step="1" inputmode="numeric"> kg</label>
+    </div>
+    <p class="hint" id="bcEsp"></p>
+    <div class="stats" id="bcStats"></div>
+    <details class="howto">
+      <summary>How to pair</summary>
+      <p><b>With the ESP32 board</b> (recommended): the board advertises a real smart trainer, byte-for-byte like the
+        bike. On a Garmin Edge, remove any previous Better_Merach sensor, then Sensors → Add Sensor → Search All →
+        <b>Better_Merach</b>: it shows up as a trainer and carries power, cadence, speed, distance and calories in a
+        single sensor. Zwift finds it the same way; the board accepts up to three connections at once.</p>
+      <p><b>From the Mac</b>: macOS cannot advertise the FTMS service data that identifies a trainer, so Garmin devices
+        only list it as a power or a speed/cadence sensor, one type per device. Use the "smart trainer" profile with
+        apps that do not need it, or the two pairing steps for a power-only or speed/cadence-only pairing.</p>
+      <p><b>Zwift and similar apps</b> (on another computer or tablet — a Mac cannot see its own sensor): pick
+        <b>Better_Merach</b> for Power and Cadence. Selecting it as Controllable is optional: resistance commands are
+        acknowledged and ignored, since the knob is manual.</p>
+      <p class="hint">Sends the head unit's fields once per second, recomputed: power from the spin-down calibration,
+        calories from the work done, speed and distance from power (flat road), resistance = knob position. Sends zero
+        when the bike is idle or disconnected. The connector must keep running in Terminal.</p>
+    </details>
+  </section>
+
+  <section class="card controls">
+    <div class="seg" id="win" role="group" aria-label="Time window">
+      <button data-w="60">1 min</button><button data-w="300">5 min</button><button data-w="900">15 min</button><button data-w="0">All</button>
+    </div>
+    <div class="chips" id="chips" aria-label="Metrics to plot"></div>
+    <div class="lowknob">
+      <span class="lab">Knob below 4?</span>
+      <span class="seg" id="lowKnob" role="group" aria-label="Knob position between 0 and 4">
+        <button data-k="0">0</button><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="4">4</button>
+      </span>
+      <span class="hint">The bike cannot tell positions 0–4 apart: tap the one you are using and the model uses it (default 2). Above 4 the position is read automatically.</span>
+    </div>
+    <form class="knob" id="knobForm">
+      <label for="knob">Marker</label>
+      <input id="knob" type="number" step="any" inputmode="decimal" placeholder="knob">
+      <input id="note" class="note" placeholder="note (optional)">
+      <button class="primary" type="submit">Add</button>
+    </form>
+  </section>
+
+  <section id="charts" aria-label="Real-time charts"></section>
+
+  <details class="card fold">
+    <summary>Head unit data <span class="tag">unverified</span></summary>
+    <p class="hint">Values computed by the bike itself: power and level are inverted with respect to the knob, speed and
+      distance come from cadence alone (× 0.317), calories are 15 kcal per virtual km. Kept here for comparison only.</p>
+    <div class="tiles" id="bikeTiles"></div>
+  </details>
+
+  <details class="card fold">
+    <summary>Diagnostics: packets, decoded fields, device</summary>
+    <section class="grid2">
+      <div><h2>Raw packets per characteristic (changed bytes highlighted)</h2><div id="raw"><p class="empty">Waiting for data…</p></div></div>
+      <div><h2>All decoded fields</h2><div id="fields"><p class="empty">Waiting for data…</p></div>
+        <div class="markers" id="markerList"></div></div>
+    </section>
+    <h2 id="gattTitle" style="margin-top:14px">Device</h2><div id="gatt"><p class="empty">No device connected.</p></div>
+  </details>
+</main>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LOCALE = 'en-US';
+
+const META = {
+  speed_kmh:      {n: 'Virtual speed (bike)', u: 'km/h', d: 1, slot: 1, bike: true},
+  cadence_rpm:    {n: 'Cadence',         u: 'rpm',  d: 0, slot: 2},
+  cad_g_rpm:      {n: 'Cadence (external)', u: 'rpm', d: 1, slot: 6, ref: 'cadence_rpm',
+                   lg: ['External sensor, per revolution', 'Head unit, ~3 s average']},
+  power_corr_w:   {n: 'Power', u: 'W', d: 0, slot: 7, ref: 'power_w', refMuted: true,
+                   lg: ['Calibrated (spin-down model)', 'Reported by the bike']},
+  kcal_est:       {n: 'Energy burned',   u: 'kcal', d: 0, slot: 5},
+  work_kj:        {n: 'Work',            u: 'kJ',   d: 1, slot: 5},
+  knob_est:       {n: 'Knob',            u: '',     d: 1, slot: 6},
+  knob_used:      {n: 'Knob used by the model', u: '', d: 1, slot: 6},
+  power_w:        {n: 'Reported power (bike)', u: 'W', d: 1, slot: 3, bike: true},
+  resistance:     {n: 'Level (bike)',    u: '',     d: 0, slot: 4, bike: true},
+  resist_pct:     {n: 'Resistance index (bike)', u: '%', d: 0, slot: 4, max: 100, bike: true},
+  k_bike:         {n: 'Bike k factor',   u: 'W/rpm', d: 2, slot: 8, bike: true},
+  hr_bpm:         {n: 'Heart rate (bike)', u: 'bpm', d: 0, slot: 5, bike: true},
+  distance_m:     {n: 'Virtual distance (bike)', u: 'm', d: 0, slot: 6, bike: true},
+  kcal_total:     {n: 'Calories (bike)', u: 'kcal', d: 0, slot: 5, bike: true},
+  elapsed_s:      {n: 'Time (bike)',     u: 's',    d: 0, slot: 8, bike: true},
+  avg_speed_kmh:  {n: 'Average speed',   u: 'km/h', d: 1, slot: 1, bike: true},
+  avg_cadence_rpm:{n: 'Average cadence', u: 'rpm',  d: 0, slot: 2, bike: true},
+  avg_power_w:    {n: 'Average power',   u: 'W',    d: 0, slot: 3, bike: true},
+  kcal_per_h:     {n: 'kcal/h',          u: '',     d: 0, slot: 7, bike: true},
+  kcal_per_min:   {n: 'kcal/min',        u: '',     d: 0, slot: 7, bike: true},
+  met:            {n: 'MET',             u: '',     d: 1, slot: 5, bike: true},
+  remaining_s:    {n: 'Remaining time',  u: 's',    d: 0, slot: 8, bike: true},
+  tf_counter:     {n: 'Crank revolutions (bike)', u: '', d: 0, slot: 6, bike: true},
+  ftms_speed_kmh: {n: 'Speed (FTMS)',    u: 'km/h', d: 1, slot: 1, bike: true},
+  ftms_cadence_rpm:{n: 'Cadence (FTMS)', u: 'rpm',  d: 0, slot: 2, bike: true},
+  ftms_power_w:   {n: 'Power (FTMS)',    u: 'W',    d: 0, slot: 3, bike: true},
+  ftms_resistance:{n: 'Resistance (FTMS)', u: '',   d: 0, slot: 4, bike: true},
+  ftms_distance_m:{n: 'Distance (FTMS)', u: 'm',    d: 0, slot: 6, bike: true},
+  ftms_kcal_total:{n: 'Energy (FTMS)',   u: 'kcal', d: 0, slot: 7, bike: true},
+  ftms_elapsed_s: {n: 'Time (FTMS)',     u: 's',    d: 0, slot: 8, bike: true},
+};
+// chart and chip order: calibrated data first, then everything else in META order
+const PRIORITY = ['power_corr_w', 'cadence_rpm', 'knob_est', 'cad_g_rpm', 'kcal_est', 'work_kj', 'knob_used'];
+const ORDER = PRIORITY.concat(Object.keys(META).filter(k => !PRIORITY.includes(k)));
+const DEFAULT_VISIBLE = ['power_corr_w', 'cadence_rpm', 'knob_est'];
+const TILE_KEYS = ['power_corr_w', 'kcal_est', 'cadence_rpm', 'cad_g_rpm', 'knob_est'];   // calibrated / trustworthy
+const BIKE_TILE_KEYS = ['power_w', 'resistance', 'speed_kmh', 'distance_m', 'kcal_total'];  // head unit values
+const GAP_S = 5;
+
+const meta = k => META[k] || {n: k, u: '', d: 2, slot: 8};
+const fmt = (k, v, withUnit) => {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  if (k === 'knob_est' && v <= 4) return '≤4';  // below 4 the bike's knob sensor is saturated
+  const m = meta(k);
+  const s = Number(v).toLocaleString(LOCALE, {minimumFractionDigits: m.d, maximumFractionDigits: m.d});
+  return withUnit && m.u ? `${s} ${m.u}` : s;
+};
+const fmtClock = sec => {
+  if (!Number.isFinite(sec)) return '--:--';
+  const neg = sec < 0; sec = Math.abs(Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  const p = n => String(n).padStart(2, '0');
+  return (neg ? '-' : '') + (h ? `${h}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`);
+};
+const capitalize = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+
+function store(k, v) { try { localStorage.setItem('merach.' + k, JSON.stringify(v)); } catch (e) {} }
+function load(k, d) { try { const v = localStorage.getItem('merach.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+
+const newData = () => ({t0: null, samples: [], markers: [], latest: {}, latestSrc: {}, knob: null});
+const S = {
+  live: newData(), v: null, replay: null, chars: {}, seen: new Set(DEFAULT_VISIBLE),
+  win: load('win', 300), visible: new Set(load('visible4', DEFAULT_VISIBLE)), state: {}, gatt: null, scan: [],
+  online: false, panels: [], hover: null, keysDirty: true, rawDirty: true, gattDirty: true,
+};
+S.v = S.live;  // data on screen: the live session or a recorded one
+const viewNow = () => S.replay ? S.replay.tEnd : Date.now() / 1000;
+
+// --------------------------------------------------------------------------------- WebSocket
+function connect() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => { S.online = true; S.ws = ws; renderState(); };
+  ws.onclose = () => { S.online = false; S.ws = null; renderState(); setTimeout(connect, 1500); };
+  ws.onmessage = ev => { try { onMsg(JSON.parse(ev.data)); } catch (e) { console.error(e); } };
+}
+
+function ingest(s, D = S.live) {
+  for (const [k, v] of Object.entries(s.m)) {
+    D.latest[k] = v; D.latestSrc[k] = s.src;
+    if (!S.seen.has(k)) { S.seen.add(k); S.keysDirty = true; }
+  }
+}
+
+function onMsg(msg) {
+  switch (msg.type) {
+    case 'hello':
+      Object.assign(S.live, newData(), {t0: msg.session_started, samples: msg.samples || [],
+        markers: msg.markers || [], knob: msg.knob ?? null});
+      S.live.samples.forEach(s => ingest(s));
+      loadSessionList();
+      S.chars = {};
+      for (const [k, v] of Object.entries(msg.chars || {})) S.chars[k] = {...v, times: []};
+      S.sensor = msg.sensor || null; renderSensor();
+      S.bc = msg.broadcast || null; renderBroadcast();
+      S.state = msg.state || {}; S.gatt = msg.gatt; S.scan = msg.scan || []; S.correction = msg.correction || null;
+      S.calibration = msg.calibration || null;
+      S.keysDirty = S.rawDirty = S.gattDirty = true; renderState(); renderMarkers();
+      break;
+    case 'state': S.state = msg.state; renderState(); break;
+    case 'sensor': S.sensor = msg.sensor; renderSensor(); break;
+    case 'broadcast': S.bc = msg.broadcast; renderBroadcast(); break;
+    case 'sample':
+      S.live.samples.push({t: msg.t, src: msg.src, m: msg.m});
+      if (S.live.samples.length > 60000) S.live.samples.splice(0, 20000);
+      ingest(msg);
+      break;
+    case 'raw': {
+      const c = S.chars[msg.char] || (S.chars[msg.char] = {name: msg.name, count: 0, times: []});
+      c.prev_hex = c.last_hex; c.last_hex = msg.hex; c.count = msg.count; c.last_decoded = msg.decoded;
+      c.last_t = msg.t; c.kind = msg.kind; c.times.push(msg.t); if (c.times.length > 20) c.times.shift();
+      S.rawDirty = true;
+      break;
+    }
+    case 'marker': S.live.markers.push(msg); S.live.knob = msg.knob; renderMarkers(); break;
+    case 'gatt': S.gatt = msg.gatt; S.gattDirty = true; break;
+    case 'scan': S.scan = msg.scan; S.gattDirty = true; break;
+  }
+}
+
+// ------------------------------------------------------------------------- recorded sessions
+const sessLabel = id => { const m = id.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/); return m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}` : id; };
+async function loadSessionList() {
+  try {
+    const list = await (await fetch('/api/sessions')).json();
+    const sel = $('#sess'), cur = sel.value;
+    sel.innerHTML = '<option value="">Live</option>' + list.map(x =>
+      `<option value="${esc(x.id)}">${esc(sessLabel(x.id))}${x.live ? ' · current, recomputed' : ''}</option>`).join('');
+    sel.value = [...sel.options].some(o => o.value === cur) ? cur : '';
+  } catch (e) { console.error(e); }
+}
+async function showSession(id) {
+  if (!id) {
+    S.replay = null; S.v = S.live; S.win = load('win', 300);
+  } else {
+    $('#replayBanner').hidden = false; $('#replayBanner').textContent = `Loading session ${sessLabel(id)}…`;
+    const data = await (await fetch('/api/session/' + encodeURIComponent(id))).json();
+    const D = Object.assign(newData(), {t0: data.session_started, samples: data.samples, markers: data.markers});
+    D.samples.forEach(s => ingest(s, D));
+    D.knob = D.markers.length ? D.markers[D.markers.length - 1].knob : null;
+    S.v = D; S.win = 0;
+    S.replay = {id, tEnd: D.samples.length ? D.samples[D.samples.length - 1].t : D.t0, correction: data.correction,
+                calibration: data.calibration};
+  }
+  const b = $('#replayBanner');
+  b.hidden = !S.replay;
+  if (S.replay) b.textContent = `Viewing the recorded session of ${sessLabel(id)}, recomputed with ` +
+    (S.replay.calibration ? 'the spin-down calibration' : 'the mirrored manufacturer table') +
+    '. Choose "Live" to return to real-time data.';
+  S.keysDirty = true; renderWin(); renderMarkers();
+}
+$('#sess').addEventListener('change', e => showSession(e.target.value).catch(err => { console.error(err); $('#replayBanner').textContent = 'Could not load the session.'; }));
+
+// ---------------------------------------------------------------------------- status / header
+function renderState() {
+  const pill = $('#pill'), txt = $('#pillText');
+  const st = S.state || {};
+  let cls = 'crit', label = 'Server unreachable';
+  if (S.online) {
+    const ph = st.phase || '';
+    if (ph === 'connected') { cls = 'good'; label = `Connected · ${st.device || ''}`; }
+    else if (['scanning', 'connecting', 'starting'].includes(ph)) { cls = 'warn'; label = capitalize(ph) + (st.device ? ` · ${st.device}` : '…'); }
+    else { cls = 'crit'; label = ph ? capitalize(ph) : 'Waiting'; }
+  }
+  pill.className = 'pill ' + cls; txt.textContent = label;
+  $('#msg').textContent = S.online ? (st.message || '') : 'Start the connector (run.command) and reload.';
+  renderSensor();
+  renderBroadcast();
+}
+
+function calNote() {
+  const c = S.calibration;
+  if (c) return `spin-down model · brake ×${fmtTick(Math.round(c.r * 100) / 100)} per knob step · ±25 % absolute uncertainty · below 4 uses the marked position (or 2)`;
+  return S.correction ? `mirrored manufacturer table between ${fmtTick(S.correction.k_min)} and ${fmtTick(S.correction.k_max)} W/rpm` : '';
+}
+
+function sendBroadcast(obj) { if (S.ws) S.ws.send(JSON.stringify({type: 'broadcast', ...obj})); }
+$('#bcToggle').addEventListener('click', () => { if (S.bc) sendBroadcast({enabled: !S.bc.enabled}); });
+$('#bcSpeed').addEventListener('change', e => sendBroadcast({speed: e.target.checked}));
+$('#bcProfile').addEventListener('change', e => sendBroadcast({profile: e.target.value}));
+$('#bcOutput').addEventListener('change', e => sendBroadcast({output: e.target.value}));
+$('#bcMass').addEventListener('change', e => sendBroadcast({mass_kg: Number(e.target.value)}));
+
+function renderBroadcast() {
+  const b = S.bc, pill = $('#bcPill'), p3 = $('#pill3');
+  if (!b || !S.online) { p3.hidden = true; if (!b) { $('#bcText').textContent = 'unavailable'; } return; }
+  const map = {
+    'connected': ['good', `connected to ${b.clients} ${b.clients === 1 ? 'device' : 'devices'}`],
+    'advertising': ['warn', 'visible, waiting for connections'],
+    'starting': ['warn', 'starting…'],
+    'error': ['crit', 'error'],
+    'off': ['', 'off'],
+    'unavailable': ['', 'unavailable'],
+  };
+  const [cls, label] = map[b.phase] || ['', b.phase];
+  pill.className = 'pill ' + cls; $('#bcText').textContent = label; pill.title = b.message || '';
+  p3.hidden = b.phase === 'unavailable'; p3.className = 'pill ' + cls;
+  $('#pill3Text').textContent = `${b.name || 'Better_Merach'} · ${label}`;
+  const t = $('#bcToggle');
+  t.textContent = b.enabled ? 'Turn off' : 'Turn on'; t.classList.toggle('off', !!b.enabled);
+  t.disabled = b.phase === 'unavailable';
+  $('#bcSpeed').checked = !!b.speed;
+  if (document.activeElement !== $('#bcProfile')) $('#bcProfile').value = b.profile || 'all';
+  if (document.activeElement !== $('#bcOutput')) $('#bcOutput').value = b.output || 'esp32';
+  $('#bcProfileWrap').hidden = (b.output || 'esp32') === 'esp32';
+  const e = b.esp || {}, useEsp = (b.output || 'esp32') !== 'mac';
+  const espText = {
+    'connected': `connected on ${e.port || '?'} · firmware ${e.fw || '?'} · ${e.conn || 0} ${e.conn === 1 ? 'device' : 'devices'} paired · ${e.adv ? 'visible as a trainer' : 'not advertising (connection limit reached)'}`,
+    'starting': `opening ${e.port || 'USB port'}…`,
+    'not found': 'not found: plug it into a USB port',
+    'silent': e.message || 'not responding',
+    'error': e.message || 'error',
+    'off': 'off',
+  }[e.phase] || e.phase || '—';
+  $('#bcEsp').hidden = !useEsp;
+  $('#bcEsp').textContent = `ESP32 board: ${espText}${b.mac_on ? ' · the Mac is broadcasting too' : ''}`;
+  if (document.activeElement !== $('#bcMass')) $('#bcMass').value = b.mass_kg ?? 109;
+  const item = (k, v) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  const on = ['connected', 'advertising'].includes(b.phase);
+  $('#bcStats').innerHTML = !on ? (b.message ? `<p class="empty">${esc(b.message)}</p>` : '') : [
+    item('Power sent', `${b.power_w ?? 0}<small>W</small>`),
+    item('Cadence', `${b.cadence_rpm ?? 0}<small>rpm</small>`),
+    b.speed ? item('Virtual speed', `${fmt('speed_kmh', b.speed_kmh ?? 0)}<small>km/h</small>`) : '',
+    b.speed ? item('Distance', `${((b.distance_m ?? 0) / 1000).toLocaleString(LOCALE, {minimumFractionDigits: 2, maximumFractionDigits: 2})}<small>km</small>`) : '',
+    item('Calories', `${b.kcal ?? 0}<small>kcal</small>`),
+    item('Resistance (knob)', b.resistance == null ? '—' : fmt('knob_est', b.resistance)),
+    item('Updates sent', b.sent ?? 0),
+  ].join('');
+}
+
+function renderSensor() {
+  const el = $('#pill2'), sn = S.sensor;
+  if (!sn || sn.phase === 'disabled' || !S.online) { el.hidden = true; return; }
+  el.hidden = false;
+  const cls = sn.phase === 'connected' ? 'good' : ['scanning', 'connecting', 'starting'].includes(sn.phase) ? 'warn' : 'crit';
+  el.className = 'pill ' + cls;
+  $('#pill2Text').textContent = sn.phase === 'connected'
+    ? `Cadence sensor · ${sn.device || ''}${sn.battery != null ? ` · ${sn.battery}%` : ''}`
+    : `Cadence sensor · ${sn.phase}`;
+  el.title = sn.message || '';
+}
+
+// ------------------------------------------------------------------- chips, tiles and panels
+function orderedKeys() {
+  return [...S.seen].sort((a, b) => {
+    const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+  });
+}
+
+function rebuildKeys() {
+  S.keysDirty = false;
+  const keys = orderedKeys();
+  // chips
+  const chip = k => `<button type="button" class="chip" data-k="${esc(k)}" aria-pressed="${S.visible.has(k)}">
+    <span class="sw" style="background:var(--s${meta(k).slot})"></span>${esc(meta(k).n)}</button>`;
+  const good = keys.filter(k => !meta(k).bike), bike = keys.filter(k => meta(k).bike);
+  $('#chips').innerHTML = good.map(chip).join('') + (bike.length ? `<details class="chipmore"><summary class="chip">+ head unit data (${bike.length})</summary>${bike.map(chip).join('')}</details>` : '');
+  // tiles: only calibrated or trustworthy values on top, head unit values in their own section
+  const tile = (k, cls) => `<div class="tile ${cls || ''}"><div class="lab"><span class="sw" style="background:var(--s${meta(k).slot})"></span>${esc(meta(k).n)}</div>
+      <div class="val" data-tile="${esc(k)}">—</div><div class="sub" data-sub="${esc(k)}">&nbsp;</div></div>`;
+  $('#tiles').innerHTML = TILE_KEYS.filter(k => DEFAULT_VISIBLE.includes(k) || k === 'kcal_est' || S.seen.has(k)).map(k => tile(k)).join('');
+  $('#bikeTiles').innerHTML = BIKE_TILE_KEYS.map(k => tile(k, 'bike')).join('');
+  // chart panels
+  const host = $('#charts'); host.innerHTML = ''; S.panels = [];
+  for (const k of keys.filter(k => S.visible.has(k))) {
+    const el = document.createElement('div'); el.className = 'panel';
+    el.innerHTML = `<div class="ph"><span class="sw" style="background:var(--s${meta(k).slot})"></span>
+      <span class="pt">${esc(meta(k).n)}${meta(k).u ? ` <span style="color:var(--muted);font-weight:400">(${esc(meta(k).u)})</span>` : ''}</span>
+      <span class="pv">—</span></div>${meta(k).ref ? `<div class="lgd">
+        <span><span class="sw" style="background:var(--s${meta(k).slot})"></span>${esc((meta(k).lg || [])[0] || meta(k).n)}</span>
+        <span><span class="sw" style="background:${meta(k).refMuted ? 'var(--muted)' : `var(--s${meta(meta(k).ref).slot})`}"></span>${esc((meta(k).lg || [])[1] || meta(meta(k).ref).n)}</span>
+        <span class="cal">${k === 'power_corr_w' ? calNote() : ''}</span></div>` : ''}
+      <canvas role="img" aria-label="${esc(meta(k).n)} over time"></canvas>`;
+    host.appendChild(el);
+    const cv = el.querySelector('canvas');
+    cv.addEventListener('pointermove', e => { const r = cv.getBoundingClientRect(); S.hover = {cv, x: e.clientX - r.left, cx: e.clientX, cy: e.clientY}; });
+    cv.addEventListener('pointerleave', () => { S.hover = null; });
+    S.panels.push({k, cv, pv: el.querySelector('.pv')});
+  }
+  if (!S.panels.length) host.innerHTML = '<p class="empty card">No metric selected.</p>';
+  renderMarkers();
+}
+
+$('#chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  const k = b.dataset.k;
+  S.visible.has(k) ? S.visible.delete(k) : S.visible.add(k);
+  store('visible4', [...S.visible]); S.keysDirty = true;
+});
+$('#win').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.win = Number(b.dataset.w); if (!S.replay) store('win', S.win); renderWin();
+});
+function renderWin() { document.querySelectorAll('#win button').forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.w) === S.win)); }
+renderWin();
+
+$('#lowKnob').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || !S.ws) return;
+  S.ws.send(JSON.stringify({type: 'marker', knob: b.dataset.k, note: ''}));
+});
+
+$('#knobForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const knob = $('#knob').value.trim(), note = $('#note').value.trim();
+  if (knob === '' && note === '') return;
+  if (S.ws) S.ws.send(JSON.stringify({type: 'marker', knob, note}));
+  $('#note').value = '';
+  $('#knob').select();
+});
+
+function renderMarkers() {
+  document.querySelectorAll('#lowKnob button').forEach(b =>
+    b.setAttribute('aria-pressed', S.v.knob != null && S.v.knob <= 4 && Number(b.dataset.k) === Number(S.v.knob)));
+  $('#markerList').innerHTML = S.v.markers.length ? '<b>Markers:</b> ' + S.v.markers.slice(-12).map(m =>
+    `${fmtClock(m.t - S.v.t0)} → ${esc(m.knob ?? '–')}${m.note ? ` (${esc(m.note)})` : ''}`).join(' · ') : '';
+}
+
+// ------------------------------------------------------------------------- text panels (4 Hz)
+function windowRange() {
+  const now = viewNow();
+  const start = S.v.samples.length ? Math.min(S.v.samples[0].t, S.v.t0 ?? Infinity) : (S.v.t0 ?? now - 60);
+  // while the session is shorter than the window, the chart starts at the session start (no empty space)
+  const xmin = S.win ? Math.max(now - S.win, Math.min(start, now - 10)) : Math.min(start, now - 10);
+  return [xmin, now];
+}
+
+function lowerBound(arr, t) {
+  let lo = 0, hi = arr.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid].t < t) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+
+function textTick() {
+  if (S.keysDirty) rebuildKeys();
+  const [xmin] = windowRange();
+  const i0 = lowerBound(S.v.samples, xmin);
+  const agg = {};
+  const MOVING_ONLY = new Set(['power_corr_w', 'power_w', 'cadence_rpm', 'cad_g_rpm']);
+  for (let i = i0; i < S.v.samples.length; i++) for (const [k, v] of Object.entries(S.v.samples[i].m)) {
+    if (MOVING_ONLY.has(k) && !(v > 0)) continue;  // power and cadence averages exclude stops
+    const a = agg[k] || (agg[k] = {sum: 0, n: 0, max: -Infinity}); a.sum += v; a.n++; if (v > a.max) a.max = v;
+  }
+  const winLabel = S.win ? `${S.win / 60} min` : 'session';
+  document.querySelectorAll('[data-tile]').forEach(el => {
+    const k = el.dataset.tile, m = meta(k), L = S.v.latest;
+    // below 4, show the position marked by the rider instead of "≤4"
+    const lowMarked = k === 'knob_est' && L.knob_est <= 4 && S.v.knob != null && S.v.knob <= 4 && L.knob_used != null;
+    el.innerHTML = lowMarked ? fmt('knob_used', L.knob_used)
+      : `${fmt(k, L[k])}${m.u && L[k] !== undefined ? `<small>${esc(m.u)}</small>` : ''}`;
+  });
+  document.querySelectorAll('[data-sub]').forEach(el => {
+    const k = el.dataset.sub, a = agg[k];
+    el.textContent = a && !['distance_m', 'kcal_total', 'elapsed_s', 'kcal_est', 'work_kj', 'knob_est'].includes(k) ? `${winLabel} avg ${fmt(k, a.sum / a.n)} · max ${fmt(k, a.max)}` : ' ';
+  });
+  const kSub = document.querySelector('[data-sub="knob_est"]');
+  if (kSub) {
+    const est = S.v.latest.knob_est, used = S.v.latest.knob_used;
+    kSub.textContent = est == null ? ' ' : est > 4 ? 'read from the bike sensor'
+      : (S.v.knob != null && S.v.knob <= 4 ? `below 4: using ${fmt('knob_used', used ?? S.v.knob)} (marked)` : 'below 4: assuming 2, mark it below');
+  }
+  const kcSub = document.querySelector('[data-sub="kcal_est"]');
+  if (kcSub) kcSub.textContent = S.v.latest.work_kj != null ? `work ${fmt('work_kj', S.v.latest.work_kj, true)} · from calibrated power` : ' ';
+  S.sumTick = (S.sumTick || 0) + 1;
+  if (S.sumTick % 4 === 1) renderSummary();
+  for (const p of S.panels) p.pv.textContent = fmt(p.k, S.v.latest[p.k], true);
+
+  const now = Date.now() / 1000;
+  let rate = 0; for (const c of Object.values(S.chars)) if (c.times && c.times.length > 1 && now - c.last_t < 5) rate += (c.times.length - 1) / (c.times[c.times.length - 1] - c.times[0] || 1);
+  $('#meta').textContent = S.replay ? `Recorded session · ${fmtClock(S.replay.tEnd - S.v.t0)} · ${S.v.samples.length} samples`
+    : S.v.t0 ? `Session ${fmtClock(now - S.v.t0)} · ${rate.toFixed(1)} packets/s` : '';
+
+  const fk = orderedKeys().filter(k => k in S.v.latest);
+  $('#fields').innerHTML = fk.length ? `<table><thead><tr><th>Field</th><th style="text-align:right">Value</th><th>Source</th></tr></thead><tbody>${
+    fk.map(k => `<tr><td>${esc(meta(k).n)} <span class="mono" style="color:var(--muted)">${esc(k)}</span></td><td class="num">${fmt(k, S.v.latest[k], true)}</td><td class="mono">${esc(S.v.latestSrc[k])}</td></tr>`).join('')
+  }</tbody></table>` : '<p class="empty">Waiting for data…</p>';
+
+  if (S.rawDirty) { S.rawDirty = false; renderRaw(); }
+  if (S.gattDirty) { S.gattDirty = false; renderGatt(); }
+}
+
+// session summary (live or recorded), from calibrated data
+function renderSummary() {
+  const sm = S.v.samples;
+  let moving = 0, wsum = 0, csum = 0, ctime = 0, last = null;
+  const pts = [];  // (t, power) for best-average windows
+  for (const s of sm) {
+    const p = s.m.power_corr_w;
+    if (p === undefined) continue;
+    const c = s.m.cadence_rpm;
+    if (last) {
+      const dt = s.t - last.t;
+      if (dt > 0 && dt < 5 && last.c > 0) { moving += dt; wsum += last.p * dt; csum += last.c * dt; ctime += dt; }
+    }
+    last = {t: s.t, p, c: c ?? 0};
+    pts.push([s.t, p]);
+  }
+  const best = win => {  // best average power over "win" seconds
+    let bestAvg = 0, j = 0, acc = 0;
+    for (let i = 1; i < pts.length; i++) {
+      acc += pts[i - 1][1] * Math.min(pts[i][0] - pts[i - 1][0], 5);
+      while (pts[i][0] - pts[j][0] > win) { acc -= pts[j][1] * Math.min(pts[j + 1][0] - pts[j][0], 5); j++; }
+      const span = pts[i][0] - pts[j][0];
+      if (span >= win * 0.9) bestAvg = Math.max(bestAvg, acc / span);
+    }
+    return bestAvg || null;
+  };
+  const L = S.v.latest;
+  $('#sumScope').textContent = S.replay ? '· recorded session' : '· current session';
+  const item = (k, v) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  const W = v => v == null ? '—' : `${Math.round(v)}<small>W</small>`;
+  $('#summary').innerHTML = !pts.length ? '<p class="empty">Waiting for data…</p>' : [
+    item('Moving time', fmtClock(moving)),
+    item('Energy burned', L.kcal_est != null ? `${Math.round(L.kcal_est)}<small>kcal</small>` : '—'),
+    item('Work', L.work_kj != null ? `${fmt('work_kj', L.work_kj)}<small>kJ</small>` : '—'),
+    item('Average power', W(moving ? wsum / moving : null)),
+    item('Best 5 s', W(best(5))),
+    item('Best 1 min', W(best(60))),
+    item('Best 5 min', W(best(300))),
+    item('Average cadence', ctime ? `${Math.round(csum / ctime)}<small>rpm</small>` : '—'),
+  ].join('');
+}
+
+function hexHTML(hex, prev) {
+  let out = '';
+  for (let i = 0; i < (hex || '').length; i += 2) {
+    const b = hex.substr(i, 2), ch = prev && prev.length === hex.length && prev.substr(i, 2) !== b;
+    out += `<span class="b${ch ? ' ch' : ''}" title="byte ${i / 2}">${b}</span>`;
+  }
+  return out || '<span class="empty">(empty)</span>';
+}
+
+function renderRaw() {
+  const now = Date.now() / 1000;
+  const items = Object.entries(S.chars).sort((a, b) => (b[1].count || 0) - (a[1].count || 0));
+  if (!items.length) { $('#raw').innerHTML = '<p class="empty">Waiting for data…</p>'; return; }
+  $('#raw').innerHTML = items.map(([k, c]) => {
+    const t = c.times || [];
+    const hz = t.length > 1 && now - c.last_t < 5 ? ((t.length - 1) / (t[t.length - 1] - t[0] || 1)).toFixed(1) + ' Hz' : '';
+    const d = c.last_decoded ? Object.entries(c.last_decoded).map(([kk, vv]) => `${kk}=${typeof vv === 'object' ? JSON.stringify(vv) : vv}`).join('  ') : 'not decoded';
+    return `<div class="rawc"><div class="rawh"><b>${esc(k)}</b><span>${esc(c.name || 'unknown')}</span>
+      <span>${c.count || 0} pkt</span><span>${hz}</span><span>${c.last_t && S.v.t0 ? fmtClock(c.last_t - S.v.t0) : ''}</span></div>
+      <div class="hex">${hexHTML(c.last_hex, c.prev_hex)}</div><div class="dec">${esc(d)}</div></div>`;
+  }).join('');
+}
+
+function renderGatt() {
+  const g = S.gatt;
+  if (g && g.services) {
+    $('#gattTitle').textContent = `Device · ${g.device?.name || ''}`;
+    $('#gatt').innerHTML = `<p class="meta">Address: <span class="mono">${esc(g.device?.address)}</span></p>` + g.services.map(s => `
+      <details ${['1826', '1818', '1816', '180a'].includes(s.short) || !s.name ? 'open' : ''}><summary>${esc(s.short)} · ${esc(s.name || 'unknown service')}</summary>
+      <table><tbody>${s.characteristics.map(c => {
+        const dec = c.decoded ? Object.entries(c.decoded).map(([k, v]) => `${k.replace(/^_/, '')}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ') : '';
+        return `<tr><td class="mono">${esc(c.short)}</td><td>${esc(c.name || '—')}</td><td class="mono">${esc((c.properties || []).join(', '))}</td>
+          <td class="mono">${esc(dec || c.value_hex || c.read_error || '')}</td></tr>`;
+      }).join('')}</tbody></table></details>`).join('');
+  } else if (S.scan && S.scan.length) {
+    $('#gattTitle').textContent = 'Devices seen while scanning';
+    $('#gatt').innerHTML = `<table><thead><tr><th>RSSI</th><th>Name</th><th>Address</th><th>Services</th></tr></thead><tbody>${
+      S.scan.map(d => `<tr><td class="num">${esc(d.rssi)}</td><td>${esc(d.name || '?')}</td><td class="mono">${esc(d.address)}</td><td class="mono">${esc((d.services || []).map(u => u.slice(4, 8)).join(' '))}</td></tr>`).join('')
+    }</tbody></table>`;
+  }
+}
+
+// --------------------------------------------------------------------------- charts (canvas)
+function niceStep(raw) {
+  const p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+}
+function niceTicks(lo, hi, n) {
+  const step = niceStep((hi - lo) / n || 1);
+  const a = Math.floor(lo / step) * step, b = Math.ceil(hi / step) * step, out = [];
+  for (let v = a; v <= b + step / 2; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+const fmtTick = v => Number(v).toLocaleString(LOCALE, {maximumFractionDigits: 2});
+const TIME_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200];
+
+function drawCharts() {
+  const css = getComputedStyle(document.documentElement);
+  const v = n => css.getPropertyValue(n).trim();
+  const C = {grid: v('--grid'), axis: v('--axis'), muted: v('--muted'), ink2: v('--ink-2'), surface: v('--surface')};
+  const [xmin, xmax] = windowRange();
+  const nowS = viewNow();
+  const tip = new Map();
+  let hoverT = null;
+  const i0 = lowerBound(S.v.samples, xmin - GAP_S);
+  const collect = key => {
+    const ts = [], vs = [];
+    let lo = Infinity, hi = -Infinity;
+    for (let i = i0; i < S.v.samples.length; i++) {
+      const s = S.v.samples[i], val = s.m[key];
+      if (val === undefined || val === null) continue;
+      ts.push(s.t); vs.push(val);
+      if (s.t >= xmin) { if (val < lo) lo = val; if (val > hi) hi = val; }
+    }
+    return {key, ts, vs, lo, hi, color: v('--s' + meta(key).slot)};
+  };
+  for (let idx = 0; idx < S.panels.length; idx++) {
+    const p = S.panels[idx], cv = p.cv, dpr = window.devicePixelRatio || 1;
+    const W = cv.clientWidth, H = cv.clientHeight;
+    if (!W || !H) continue;
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const L = 46, R = 12, T = 10, B = 20, pw = W - L - R, ph = H - T - B;
+    const X = t => L + (t - xmin) / (xmax - xmin) * pw;
+
+    // series: reference first (underneath), then the main one (on top)
+    const ref = meta(p.k).ref ? collect(meta(p.k).ref) : null;
+    if (ref && meta(p.k).refMuted) ref.color = C.muted;  // the bike's own value stays as a muted comparison
+    const series = (ref ? [ref] : []).concat([collect(p.k)]);
+    let lo = Math.min(...series.map(s => s.lo)), hi = Math.max(...series.map(s => s.hi));
+    if (!Number.isFinite(lo)) { lo = 0; hi = 1; }
+    lo = Math.min(0, lo); if (hi <= lo) hi = lo + 1;
+    const fixedMax = meta(p.k).max;
+    const ticks = fixedMax && hi <= fixedMax ? niceTicks(lo, fixedMax, 4) : niceTicks(lo, hi * 1.05, 4);
+    const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+    const Y = val => T + ph - (val - y0) / (y1 - y0) * ph;
+
+    ctx.font = '11px system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.lineWidth = 1;
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (const tv of ticks) {
+      const y = Math.round(Y(tv)) + 0.5;
+      ctx.strokeStyle = tv === 0 ? C.axis : C.grid;
+      ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(L + pw, y); ctx.stroke();
+      ctx.fillStyle = C.muted; ctx.fillText(fmtTick(tv), L - 6, y);
+    }
+    // time axis (relative to the session start)
+    const base = S.v.t0 ?? xmin;
+    const step = TIME_STEPS.find(s => (xmax - xmin) / s <= Math.max(2, pw / 80)) || 7200;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = C.muted;
+    for (let rt = Math.ceil((xmin - base) / step) * step; base + rt <= xmax; rt += step) {
+      const x = X(base + rt); if (x < L + 12 || x > L + pw - 12) continue;
+      ctx.fillText(fmtClock(rt), x, T + ph + 5);
+    }
+    // knob markers
+    ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = C.ink2; ctx.fillStyle = C.ink2;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    let labelRight = -Infinity;  // skip labels that would overlap the previous one
+    for (const mk of S.v.markers) {
+      if (mk.t < xmin || mk.t > xmax) continue;
+      const x = Math.round(X(mk.t)) + 0.5;
+      ctx.beginPath(); ctx.moveTo(x, T); ctx.lineTo(x, T + ph); ctx.stroke();
+      if (idx === 0) {
+        const lab = `${labelRight === -Infinity ? 'knob ' : ''}${mk.knob ?? ''}${mk.note ? ' · ' + mk.note : ''}`;
+        if (x + 3 > labelRight) { ctx.fillText(lab, x + 3, T); labelRight = x + 3 + ctx.measureText(lab).width + 4; }
+      }
+    }
+    ctx.restore();
+
+    if (!series.some(s => s.ts.length)) {
+      ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('no data for this metric', L + pw / 2, T + ph / 2);
+    }
+    const dot = (x, y, color) => {
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fillStyle = C.surface; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+    };
+    ctx.save(); ctx.beginPath(); ctx.rect(L, T - 6, pw + 6, ph + 12); ctx.clip();
+    for (const {ts, vs, color} of series) {
+      if (!ts.length) continue;
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.beginPath();
+      let pen = false, lastT = -Infinity;
+      const put = (t, val) => { const x = X(t), y = Y(val); if (!pen || t - lastT > GAP_S) ctx.moveTo(x, y); else ctx.lineTo(x, y); pen = true; lastT = t; };
+      if (ts.length <= pw * 1.5) {
+        for (let j = 0; j < ts.length; j++) put(ts[j], vs[j]);
+      } else { // min/max decimation per pixel column
+        let col = null, mn, mx, mnT, mxT;
+        const flush = () => { if (col === null) return; if (mnT <= mxT) { put(mnT, mn); put(mxT, mx); } else { put(mxT, mx); put(mnT, mn); } };
+        for (let j = 0; j < ts.length; j++) {
+          const c = Math.floor(X(ts[j]));
+          if (c !== col) { flush(); col = c; mn = mx = vs[j]; mnT = mxT = ts[j]; }
+          else { if (vs[j] < mn) { mn = vs[j]; mnT = ts[j]; } if (vs[j] > mx) { mx = vs[j]; mxT = ts[j]; } }
+        }
+        flush();
+      }
+      ctx.stroke();
+      const lt = ts[ts.length - 1];
+      if (lt >= xmin && nowS - lt < GAP_S) dot(X(lt), Y(vs[vs.length - 1]), color);
+    }
+    ctx.restore();
+
+    // shared crosshair
+    if (S.hover && S.hover.x >= L && S.hover.x <= L + pw && S.panels.some(q => q.cv === S.hover.cv)) {
+      hoverT = xmin + (S.hover.x - L) / pw * (xmax - xmin);
+      const x = Math.round(X(hoverT)) + 0.5;
+      ctx.strokeStyle = C.muted; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, T); ctx.lineTo(x, T + ph); ctx.stroke();
+      for (const {key, ts, vs, color} of series.slice().reverse()) {
+        let best = -1, bd = Infinity;
+        for (let j = 0; j < ts.length; j++) { const d = Math.abs(ts[j] - hoverT); if (d < bd) { bd = d; best = j; } }
+        const ok = best >= 0 && bd < 3;
+        if (ok) dot(X(ts[best]), Y(vs[best]), color);
+        if (!tip.has(key)) tip.set(key, ok ? vs[best] : null);
+      }
+    }
+  }
+  renderTip(hoverT, [...tip].map(([k, val]) => ({k, v: val})));
+}
+
+function renderTip(hoverT, rows) {
+  const el = $('#tip');
+  if (hoverT === null || !S.hover) { el.hidden = true; return; }
+  let knob = null; for (const m of S.v.markers) if (m.t <= hoverT) knob = m.knob;
+  el.innerHTML = `<div class="tt">${fmtClock(hoverT - (S.v.t0 ?? hoverT))}</div>` + rows.map(r =>
+    `<div class="row"><span class="sw" style="background:var(--s${meta(r.k).slot})"></span><span>${esc(meta(r.k).n)}</span><span>${fmt(r.k, r.v, true)}</span></div>`).join('')
+    + `<div class="row"><span class="sw"></span><span>Knob marker</span><span>${esc(knob ?? '—')}</span></div>`;
+  el.hidden = false;
+  const r = el.getBoundingClientRect();
+  let x = S.hover.cx + 14, y = S.hover.cy + 14;
+  if (x + r.width > innerWidth - 8) x = S.hover.cx - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = S.hover.cy - r.height - 14;
+  el.style.left = Math.max(8, x) + 'px'; el.style.top = Math.max(8, y) + 'px';
+}
+
+let lastFrame = 0;
+function frame(ts) {
+  requestAnimationFrame(frame);
+  if (ts - lastFrame < 60) return;
+  lastFrame = ts;
+  if (S.keysDirty) rebuildKeys();
+  drawCharts();
+}
+
+rebuildKeys();
+renderState();
+setInterval(textTick, 250);
+requestAnimationFrame(frame);
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+-r requirements.txt
+esptool>=4.7    # flashing MicroPython on the ESP32 board

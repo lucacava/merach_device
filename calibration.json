@@ -1,0 +1,12 @@
+{
+  "i_crank": 5.4,
+  "flywheel_inertia": 0.15,
+  "ratio": 6.0,
+  "a": 0.8,
+  "b0": 0.06404,
+  "r": 1.25809,
+  "sessions": [
+    "20261119-222537"
+  ],
+  "note": "P = i_crank * (a + b0 * r**knob * w) * w, with w the crank speed in rad/s (see docs/calibration.md)"
+}
